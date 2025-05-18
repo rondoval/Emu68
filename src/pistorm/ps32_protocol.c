@@ -1073,6 +1073,10 @@ void (*write_access_128)(unsigned int address, uint128_t data);
 
 void ps_setup_protocol()
 {
+    pistorm_setup_io();
+    pistorm_setup_serial();
+    *gpreset = LE32(CLEAR_BITS);
+    
     if (use_2slot)
     {
         kprintf("[PS32] Setting up two-slot protocol\n");
@@ -1100,10 +1104,6 @@ void ps_setup_protocol()
 
 //    __atomic_clear(&gpio_lock, __ATOMIC_RELEASE);
 
-    pistorm_setup_io();
-    pistorm_setup_serial();
-
-    *gpreset = LE32(CLEAR_BITS);
 
     set_input();
 }
@@ -1269,6 +1269,10 @@ void ps_pulse_reset()
 
     if (use_2slot)
         ps_set_control(CONTROL_INC_EXEC_SLOT);
+
+    if(!ps_read_status()&STATUS_IS_BM) {
+        kprintf("[PS32] Failed to become a bus master\n");
+    }
 
     overlay = 1;
     board = &__boards_start;

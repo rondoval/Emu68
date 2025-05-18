@@ -25,7 +25,7 @@ static int serial_up = 0;
 
 #ifdef PISTORM
 
-uint8_t *q_buffer;
+volatile uint8_t *q_buffer;
 volatile uint64_t q_head;
 volatile uint64_t q_tail;
 #define Q_SIZE (16*1024*1024)
@@ -36,7 +36,7 @@ void q_push(uint8_t data)
         asm volatile("yield");
     
     q_buffer[q_head & (Q_SIZE - 1)] = data;
-    __sync_add_and_fetch(&q_head, 1);
+    __atomic_fetch_add(&q_head, 1, __ATOMIC_SEQ_CST);
     asm volatile("sev");
 }
 
@@ -47,18 +47,19 @@ uint8_t q_pop()
     }
 
     uint8_t data = q_buffer[q_tail & (Q_SIZE - 1)];
-    __sync_add_and_fetch(&q_tail, 1);
+    __atomic_fetch_add(&q_tail, 1, __ATOMIC_SEQ_CST);
     return data;
 }
 
-int redirect = 0;
+volatile unsigned char redirect = 0;
 int fast_serial = 0;
+volatile unsigned char print_lock = 0;
 
 void putByte(void *io_base, char chr)
 {
     (void)io_base;
 
-    if (redirect)
+    if (__atomic_load_n(&redirect, __ATOMIC_SEQ_CST))
     {
         if (chr == '\n')
             q_push('\r');
@@ -81,7 +82,10 @@ void putByte(void *io_base, char chr)
 
 void serial_writer()
 {
-    redirect = 1;
+    /* Wait for serial write to end before switching to async logging */
+    while(__atomic_test_and_set(&print_lock, __ATOMIC_ACQUIRE)) asm volatile("yield");
+    __atomic_store_n(&redirect, 1, __ATOMIC_SEQ_CST);
+    __atomic_clear(&print_lock, __ATOMIC_RELEASE);
 
     if (fast_serial) {
         while(1) {
@@ -125,8 +129,6 @@ static inline void putByte(void *io_base, char chr)
 
 #undef ARM_PERIIOBASE
 #define ARM_PERIIOBASE 0xf2000000
-
-volatile unsigned char print_lock = 0;
 
 void kprintf(const char * restrict format, ...)
 {

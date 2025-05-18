@@ -927,7 +927,7 @@ void boot(void *dtree)
     /* Setup debug console on serial port */
     setup_serial();
 
-    kprintf("\033[2J[BOOT] Booting %s\n", bootstrapName);
+    kprintf("[BOOT] Booting %s\n", bootstrapName);
     p = dt_find_property(dt_find_node("/"), "model");
     if (p) {
         kprintf("[BOOT] Machine: %s\n", p->op_value);
