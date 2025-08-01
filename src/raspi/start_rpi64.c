@@ -241,19 +241,18 @@ extern int block_c0;
 void platform_init()
 {
     of_node_t *e = NULL;
+    uint32_t start_map = 0xf20 / 2;
 
-    /*
-        Prepare mapping for peripherals. Use and update the data from device tree here
-        All peripherals are mapped in the lower 4G address space so that they can be
-        accessed from m68k.
-    */
-    e = dt_find_node("/soc");
-    if (e)
-    {
+    // Helper function to map peripheral ranges
+    auto map_peripheral_ranges = [&start_map](const char* node_name) {
+        of_node_t *e = dt_find_node(node_name);
+        if (!e) return;
+
         of_property_t *p = dt_find_property(e, "ranges");
+        if (!p) return;
+
         uint32_t *ranges = p->op_value;
         int32_t len = p->op_length;
-        uint32_t start_map = 0xf20 / 2;
 
         int addr_cpu_len = dt_get_property_value_u32(e->on_parent, "#address-cells", 1, FALSE);
         int addr_bus_len = dt_get_property_value_u32(e, "#address-cells", 1, TRUE);
@@ -286,7 +285,16 @@ void platform_init()
             len -= sizeof(int32_t) * (addr_bus_len + addr_cpu_len + size_bus_len);
             ranges += addr_bus_len + addr_cpu_len + size_bus_len;
         }
-    }
+    };
+
+    /*
+        Prepare mapping for peripherals. Use and update the data from device tree here
+        All peripherals are mapped in the lower 4G address space so that they can be
+        accessed from m68k.
+    */
+    map_peripheral_ranges("/soc");
+    map_peripheral_ranges("/scb");
+
 #ifdef PISTORM
     ps_setup_protocol();
     ps_reset_state_machine();
