@@ -228,7 +228,8 @@ static inline void set_output() {
 void pistorm_setup_serial()
 {
     uint32_t fsel;
-    
+    gpio =    ((volatile uint32_t *)BCM2708_PERI_BASE) + GPIO_ADDR / 4;
+
     fsel = *(gpio + REG(SER_OUT_BIT));
     fsel &= LE32(~MASK(SER_OUT_BIT));
     fsel |= LE32(FUNC(SER_OUT_BIT, OUT));
@@ -1125,6 +1126,11 @@ void (*write_access_128)(unsigned int address, uint128_t data);
 
 void ps_setup_protocol()
 {
+    pistorm_setup_io();
+    pistorm_setup_serial();
+
+    *gpreset = LE32(CLEAR_BITS);
+
     if (use_2slot)
     {
         kprintf("[PS32] Setting up two-slot protocol\n");
@@ -1151,11 +1157,6 @@ void ps_setup_protocol()
     }
 
 //    __atomic_clear(&gpio_lock, __ATOMIC_RELEASE);
-
-    pistorm_setup_io();
-    pistorm_setup_serial();
-
-    *gpreset = LE32(CLEAR_BITS);
 
     set_input();
 }

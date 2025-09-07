@@ -432,8 +432,10 @@ void setup_serial()
                 fast_serial = 1;
                 fastSerial_init();
             }
-            else
+            else {
                 fast_serial = 0;
+                pistorm_setup_serial();
+            }
         }
     }
 
