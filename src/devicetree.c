@@ -279,13 +279,25 @@ of_node_t * dt_find_node(char *key)
 
             ptrbuf[i] = 0;
 
+            of_node_t *found = NULL;
             for (node = ret->on_children; node; node = node->on_next)
             {
                 if (!_dt_strcmp(ptrbuf, node->on_name))
                 {
-                    return node;
+                    found = node;
+                    break;
                 }
             }
+
+            if (!found)
+                return NULL;
+
+            /* Descend and continue with next segment */
+            ret = found;
+
+            /* If end of string, we've resolved the full path */
+            if (*key == 0)
+                return ret;
         }
     }
 
